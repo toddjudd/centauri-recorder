@@ -29,7 +29,7 @@ Storage stays small regardless of print length: about 150 MB of real-time video 
 docker compose up -d --build
 ```
 
-Open `http://NAS:8080` for status, the latest frame, a live view and the videos. Configuration is in `docker-compose.yml`. Set `TZ` so the overlay timestamps are in local time.
+Open `http://NAS:8080` for the dashboard: live camera, the recorded videos with download links, print progress, temperatures and a status timeline. It refreshes every 3 seconds. Configuration is in `docker-compose.yml`. Set `TZ` so the overlay timestamps are in local time.
 
 ## Run locally
 
