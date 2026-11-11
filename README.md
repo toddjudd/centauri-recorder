@@ -31,6 +31,15 @@ docker compose up -d --build
 
 Open `http://NAS:8080` for the dashboard: live camera, the recorded videos with download links, print progress, temperatures and a status timeline. It refreshes every 3 seconds. Configuration is in `docker-compose.yml`. Set `TZ` so the overlay timestamps are in local time.
 
+## Notifications
+
+When a print ends, the recorder can send a push notification with the result, duration, layer count and a final camera frame. It uses [ntfy](https://ntfy.sh), because browsers only allow web notifications on HTTPS pages.
+
+1. Install the ntfy app ([Android](https://play.google.com/store/apps/details?id=io.heckel.ntfy), [iOS](https://apps.apple.com/app/ntfy/id1625396347)).
+2. Set `NTFY_URL` in `docker-compose.yml` to a topic with a hard-to-guess name, for example `https://ntfy.sh/centauri-7f3k9q2x`. Anyone who knows the topic name can read it.
+3. Set `PUBLIC_URL` to the dashboard address so tapping the notification opens it.
+4. Subscribe to the same topic in the app. The dashboard's Notifications card shows the topic and has a **Send test** button.
+
 ## Run locally
 
 Needs Python 3.12 and an ffmpeg build with `drawtext` (libfreetype).
