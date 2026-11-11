@@ -8,7 +8,7 @@ from aiohttp import web
 
 from .camera import Camera
 from .config import Config
-from .notify import send
+from .notify import send, watch_url
 from .printer import Printer
 
 STATIC = Path(__file__).parent / "static"
@@ -39,7 +39,10 @@ def make_app(cfg: Config, camera: Camera, printer: Printer) -> web.Application:
         if not cfg.notifications_enabled:
             raise web.HTTPNotFound()
         try:
-            await send(cfg, "🔔 **Centauri Recorder** test. You'll get a DM like this when a print ends.", camera.latest)
+            text = "🔔 **Centauri Recorder** test. You'll get a DM like this when a print ends."
+            if cfg.public_url:
+                text += f"\n[Open the dashboard]({watch_url(cfg)})"
+            await send(cfg, text, camera.latest)
         except (aiohttp.ClientError, RuntimeError, TimeoutError) as e:
             return web.json_response({"ok": False, "error": str(e)}, status=502)
         return web.json_response({"ok": True})
