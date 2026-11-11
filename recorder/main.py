@@ -34,7 +34,8 @@ async def supervise(cfg: Config, camera: Camera, printer: Printer) -> None:
             continue
         offline_since = None
 
-        if session and session.task_id != st.task_id and (running or st.printing):
+        # The printer clears TaskId when a print ends, so only a *different* active job supersedes.
+        if session and st.printing and st.task_id and session.task_id != st.task_id:
             await session.finish("superseded" if running else "unknown")
             session, running = None, False
 

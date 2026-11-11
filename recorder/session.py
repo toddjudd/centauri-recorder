@@ -170,11 +170,11 @@ class Session:
             "ffmpeg", "-hide_banner", "-loglevel", "error",
             "-use_wallclock_as_timestamps", "1", "-f", "mjpeg", "-i", "pipe:0",
             "-vf", drawtext, "-c:v", "libx264", "-preset", "veryfast",
-            "-crf", str(self.cfg.video_crf), "-pix_fmt", "yuv420p", "-g", "100", "-fps_mode", "vfr",
-            "-f", "segment", "-segment_time", str(self.cfg.segment_seconds), "-reset_timestamps", "1",
-            "-segment_format", "mp4",
-            "-segment_format_options", "movflags=+frag_keyframe+empty_moov+default_base_moof",
-            "-strftime", "1", str(self.segments / f"{SEGMENT_PATTERN}.mp4"),
+            "-crf", str(self.cfg.video_crf), "-pix_fmt", "yuv420p", "-g", "20", "-fps_mode", "vfr",
+            # MPEG-TS segments stay readable if ffmpeg is killed mid-segment (MP4 would lose its index).
+            "-f", "segment", "-segment_time", str(self.cfg.segment_seconds), "-segment_format", "mpegts",
+            "-segment_format_options", "flush_packets=1",
+            "-strftime", "1", str(self.segments / f"{SEGMENT_PATTERN}.ts"),
             stdin=asyncio.subprocess.PIPE)
         assert proc.stdin
         try:
@@ -200,7 +200,7 @@ class Session:
 
     def _split_segments(self, now: float) -> tuple[list[Path], list[Path]]:
         """Return (first-window segments, last-window segments) by segment start time."""
-        segs = sorted(self.segments.glob("*.mp4"))
+        segs = sorted(s for s in self.segments.glob("*.ts") if s.stat().st_size)
         first_end = self.meta["started_at"] + self.cfg.first_minutes * 60
         last_start = now - self.cfg.buffer_minutes * 60 - self.cfg.segment_seconds
         first = [s for s in segs if self._segment_start(s) < first_end]
@@ -212,13 +212,13 @@ class Session:
             await asyncio.sleep(60)
             first, last = self._split_segments(time.time())
             keep = set(first) | set(last)
-            for seg in self.segments.glob("*.mp4"):
+            for seg in self.segments.glob("*.ts"):
                 if seg not in keep:
                     seg.unlink()
 
     async def _assemble_realtime(self) -> None:
         first, last = self._split_segments(self.meta["ended_at"])
-        everything = sorted(self.segments.glob("*.mp4"))
+        everything = sorted(s for s in self.segments.glob("*.ts") if s.stat().st_size)
         if everything == first + last:  # no gap: the whole print fits in one file
             outputs = {"full.mp4": everything}
         else:
