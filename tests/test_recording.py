@@ -30,9 +30,10 @@ def kill_segment_encoder() -> None:
     for proc in Path("/proc").glob("[0-9]*"):
         try:
             args = (proc / "cmdline").read_bytes().split(b"\0")
-        except OSError:
+            ppid = int((proc / "stat").read_text().rsplit(")", 1)[1].split()[1])
+        except (OSError, IndexError, ValueError):
             continue
-        if Path(args[0].decode()).name == "ffmpeg" and b"segment" in args:
+        if ppid == os.getpid() and Path(args[0].decode()).name == "ffmpeg" and b"segment" in args:
             os.kill(int(proc.name), signal.SIGKILL)
 
 
