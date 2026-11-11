@@ -1,0 +1,22 @@
+services:
+  centauri-recorder:
+    build: .
+    image: centauri-recorder:latest
+    container_name: centauri-recorder
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/data
+    environment:
+      PRINTER_HOST: 192.168.4.33
+      TZ: America/Chicago
+      # Optional tuning (defaults shown):
+      # FIRST_MINUTES: 45            # keep real-time video of the start of the print
+      # BUFFER_MINUTES: 60           # keep a rolling window of the last N minutes
+      # SEGMENT_SECONDS: 300
+      # VIDEO_CRF: 30                # higher = smaller files
+      # TIMELAPSE_INTERVAL: 60       # max seconds between timelapse frames (also one per layer)
+      # TIMELAPSE_FPS: 30
+      # TIMELAPSE_REBUILD_MINUTES: 60
+      # END_GRACE_SECONDS: 60
