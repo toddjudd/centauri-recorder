@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Centauri Recorder</title>
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#0e0f12">
+<style>
+  :root {
+    --bg: #0e0f12; --panel: #16181d; --panel-2: #1c1f25; --line: #262a32;
+    --text: #e8eaed; --muted: #8b93a1; --accent: #4f8cff; --ok: #3ecf8e; --warn: #f5a524; --rec: #ff4d4f;
+    --radius: 14px;
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-size: 14px; -webkit-font-smoothing: antialiased; }
+  header { display: flex; align-items: center; gap: 12px; padding: 16px 24px; border-bottom: 1px solid var(--line); }
+  header img { width: 32px; height: 32px; }
+  header h1 { font-size: 16px; font-weight: 600; margin: 0; letter-spacing: .2px; }
+  header .sub { color: var(--muted); font-size: 12px; }
+  .pills { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px;
+          background: var(--panel); border: 1px solid var(--line); color: var(--muted); font-size: 12px; white-space: nowrap; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+  .dot.ok { background: var(--ok); } .dot.bad { background: var(--rec); } .dot.warn { background: var(--warn); }
+  .pill.rec { color: #fff; border-color: rgba(255,77,79,.4); background: rgba(255,77,79,.12); }
+  .pill.rec .dot { background: var(--rec); animation: pulse 1.4s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .25; } }
+
+  main { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 20px; padding: 20px 24px; max-width: 1400px; margin: 0 auto; }
+  @media (max-width: 960px) { main { grid-template-columns: 1fr; padding: 16px; } header { padding: 14px 16px; } }
+  @media (max-width: 520px) { header .sub { display: none; } header h1 { font-size: 15px; } .pills { gap: 6px; } }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); }
+  .card h2 { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin: 0 0 12px; }
+  .pad { padding: 18px; }
+  aside { display: flex; flex-direction: column; gap: 20px; }
+
+  .tabs { display: flex; gap: 4px; padding: 6px; border-bottom: 1px solid var(--line); overflow-x: auto; }
+  .tab { appearance: none; border: 0; background: transparent; color: var(--muted); font: inherit; font-weight: 500;
+         padding: 8px 14px; border-radius: 9px; cursor: pointer; white-space: nowrap; }
+  .tab:hover { color: var(--text); background: var(--panel-2); }
+  .tab[aria-selected="true"] { color: var(--text); background: var(--panel-2); box-shadow: inset 0 0 0 1px var(--line); }
+  .tab:disabled { opacity: .35; cursor: default; background: transparent; }
+  .viewer { position: relative; aspect-ratio: 16 / 9; background: #000; display: grid; place-items: center; overflow: hidden; }
+  .viewer img, .viewer video { width: 100%; height: 100%; object-fit: contain; display: block; }
+  .empty { color: var(--muted); text-align: center; padding: 24px; }
+  .empty strong { display: block; color: var(--text); font-weight: 500; margin-bottom: 4px; }
+  .viewer-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 18px; color: var(--muted); font-size: 13px; }
+  a.btn { color: var(--text); text-decoration: none; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel-2); font-size: 12px; }
+  a.btn:hover { border-color: #3a404b; }
+
+  .filename { font-size: 15px; font-weight: 600; line-height: 1.35; word-break: break-word; margin-bottom: 14px; }
+  .progress-row { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px; }
+  .big { font-size: 32px; font-weight: 600; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+  .badge { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; padding: 4px 8px; border-radius: 6px;
+           background: var(--panel-2); color: var(--muted); border: 1px solid var(--line); }
+  .badge.printing { color: var(--accent); border-color: rgba(79,140,255,.35); background: rgba(79,140,255,.1); }
+  .badge.complete { color: var(--ok); border-color: rgba(62,207,142,.35); background: rgba(62,207,142,.1); }
+  .badge.paused, .badge.pausing { color: var(--warn); border-color: rgba(245,165,36,.35); background: rgba(245,165,36,.1); }
+  .badge.stopped, .badge.printer_offline { color: var(--rec); border-color: rgba(255,77,79,.35); background: rgba(255,77,79,.1); }
+  .bar { height: 6px; background: var(--panel-2); border-radius: 99px; overflow: hidden; }
+  .bar > div { height: 100%; width: 0; background: var(--accent); border-radius: 99px; transition: width .6s ease; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 16px; }
+  .stat { background: var(--panel-2); border-radius: 10px; padding: 10px 12px; }
+  .stat .k { color: var(--muted); font-size: 11px; margin-bottom: 2px; }
+  .stat .v { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  dl { display: grid; grid-template-columns: auto 1fr; gap: 10px 16px; margin: 0; }
+  dt { color: var(--muted); } dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+  ol.timeline { list-style: none; margin: 0; padding: 0; max-height: 260px; overflow-y: auto; }
+  ol.timeline li { display: grid; grid-template-columns: 12px 1fr auto; gap: 10px; align-items: center; padding: 7px 0; border-top: 1px solid var(--line); }
+  ol.timeline li:first-child { border-top: 0; }
+  ol.timeline .dot.printing { background: var(--accent); } ol.timeline .dot.complete { background: var(--ok); }
+  ol.timeline .dot.paused, ol.timeline .dot.pausing { background: var(--warn); } ol.timeline .dot.stopped { background: var(--rec); }
+  ol.timeline .t { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .muted { color: var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <img src="/static/favicon.svg" alt="">
+  <div>
+    <h1>Centauri Recorder</h1>
+    <div class="sub">Elegoo Centauri Carbon</div>
+  </div>
+  <div class="pills">
+    <span class="pill rec" id="pill-rec" hidden><span class="dot"></span>REC</span>
+    <span class="pill"><span class="dot" id="dot-printer"></span><span id="txt-printer">Printer</span></span>
+    <span class="pill"><span class="dot" id="dot-camera"></span>Camera</span>
+  </div>
+</header>
+
+<main>
+  <section class="card" style="overflow:hidden">
+    <nav class="tabs" role="tablist" id="tabs"></nav>
+    <div class="viewer" id="viewer"></div>
+    <div class="viewer-bar"><span id="caption"></span><span id="actions"></span></div>
+  </section>
+
+  <aside>
+    <section class="card pad">
+      <h2>Print</h2>
+      <div class="filename" id="filename">—</div>
+      <div class="progress-row">
+        <span class="big" id="progress">—</span>
+        <span class="badge" id="badge">—</span>
+      </div>
+      <div class="bar"><div id="bar"></div></div>
+      <div class="stats">
+        <div class="stat"><div class="k">Layer</div><div class="v" id="layer">—</div></div>
+        <div class="stat"><div class="k">Nozzle</div><div class="v" id="nozzle">—</div></div>
+        <div class="stat"><div class="k">Bed</div><div class="v" id="bed">—</div></div>
+      </div>
+    </section>
+
+    <section class="card pad">
+      <h2>Recording</h2>
+      <dl>
+        <dt>Started</dt><dd id="started">—</dd>
+        <dt>Duration</dt><dd id="duration">—</dd>
+        <dt>Result</dt><dd id="result">—</dd>
+        <dt>Storage</dt><dd id="usage">—</dd>
+      </dl>
+    </section>
+
+    <section class="card pad">
+      <h2>Timeline</h2>
+      <ol class="timeline" id="timeline"><li class="muted" style="display:block">No events yet</li></ol>
+    </section>
+  </aside>
+</main>
+
+<script>
+const VIEWS = [
+  { id: "live", label: "Live" },
+  { id: "timelapse.mp4", label: "Timelapse" },
+  { id: "first_layers.mp4", label: "First layers" },
+  { id: "final_minutes.mp4", label: "Final minutes" },
+  { id: "full.mp4", label: "Full print" },
+];
+const $ = (id) => document.getElementById(id);
+let state = null, selected = "live", shownKey = null;
+
+const fmtBytes = (b) => b < 1e6 ? `${(b / 1e3).toFixed(0)} KB` : b < 1e9 ? `${(b / 1e6).toFixed(1)} MB` : `${(b / 1e9).toFixed(2)} GB`;
+const fmtDur = (s) => {
+  s = Math.max(0, Math.round(s));
+  const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60);
+  return d ? `${d}d ${h}h ${m}m` : h ? `${h}h ${m}m` : `${m}m ${s % 60}s`;
+};
+const fmtTime = (t) => new Date(t * 1000).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+const prettyName = (f) => (f || "").replace(/\.gcode$/i, "").replace(/_/g, " ").trim();
+const label = (s) => (s || "").replace(/_/g, " ");
+const fileInfo = (name) => state?.files.find((f) => f.name === name);
+
+function renderTabs() {
+  $("tabs").replaceChildren(...VIEWS.filter((v) => v.id === "live" || fileInfo(v.id)).map((v) => {
+    const b = document.createElement("button");
+    b.className = "tab"; b.role = "tab"; b.textContent = v.label;
+    b.setAttribute("aria-selected", String(v.id === selected));
+    b.onclick = () => { selected = v.id; renderTabs(); renderViewer(); };
+    return b;
+  }));
+}
+
+function renderViewer() {
+  const viewer = $("viewer");
+  if (selected === "live") {
+    const key = `live:${state?.camera_ok}`;
+    if (key === shownKey) return;
+    shownKey = key;
+    $("actions").replaceChildren();
+    if (!state?.camera_ok) {
+      viewer.innerHTML = `<div class="empty"><strong>Camera offline</strong>Waiting for the printer's stream…</div>`;
+      $("caption").textContent = "";
+      return;
+    }
+    const img = new Image(); img.src = "/live"; img.alt = "Live camera";
+    viewer.replaceChildren(img);
+    $("caption").textContent = "Live camera, about 10 fps";
+    return;
+  }
+  const f = fileInfo(selected);
+  if (!f) { selected = "live"; renderTabs(); return renderViewer(); }
+  const key = `${f.name}:${f.mtime}`;
+  if (key === shownKey) return;
+  const playing = viewer.querySelector("video");
+  if (playing && !playing.paused && shownKey?.startsWith(f.name + ":")) return; // don't yank a video mid-watch
+  shownKey = key;
+  const url = `/files/${f.name}?v=${Math.floor(f.mtime)}`;
+  const v = document.createElement("video");
+  v.src = url; v.controls = true; v.preload = "metadata"; v.playsInline = true;
+  viewer.replaceChildren(v);
+  $("caption").textContent = `${fmtBytes(f.size)} · updated ${fmtTime(f.mtime)}`;
+  const a = document.createElement("a");
+  a.className = "btn"; a.href = url; a.download = f.name; a.textContent = "Download";
+  $("actions").replaceChildren(a);
+}
+
+function renderSide() {
+  const p = state.printer, s = state.session;
+  const printing = p?.printing;
+  $("dot-printer").className = "dot " + (p ? "ok" : "bad");
+  $("txt-printer").textContent = p ? "Printer" : "Printer offline";
+  $("dot-camera").className = "dot " + (state.camera_ok ? "ok" : "bad");
+  const recording = s && !s.ended_at;
+  $("pill-rec").hidden = !recording;
+
+  const name = printing ? p.filename : s?.filename;
+  $("filename").textContent = prettyName(name) || "No print";
+  $("filename").title = name || "";
+  const status = p ? (printing ? p.status_name : (s?.end_status || p.status_name)) : "printer_offline";
+  $("badge").textContent = label(status);
+  $("badge").className = "badge " + status;
+  const pct = printing ? p.progress : s?.total_layers ? Math.round(100 * s.last_layer / s.total_layers) : null;
+  $("progress").textContent = pct == null ? "—" : `${pct}%`;
+  $("bar").style.width = `${pct ?? 0}%`;
+  $("bar").style.background = !printing && s?.end_status === "complete" ? "var(--ok)" : "";
+  const total = printing ? p.total_layers : s?.total_layers;
+  const layer = printing ? p.layer : s?.last_layer;
+  $("layer").textContent = total ? `${layer}/${total}` : "—";
+  $("nozzle").textContent = p ? `${Math.round(p.nozzle)}°` : "—";
+  $("bed").textContent = p ? `${Math.round(p.bed)}°` : "—";
+
+  $("started").textContent = s ? fmtTime(s.started_at) : "—";
+  $("duration").textContent = s ? fmtDur((s.ended_at || Date.now() / 1000) - s.started_at) : "—";
+  $("result").textContent = s ? (s.ended_at ? label(s.end_status) : "Recording…") : "—";
+  $("usage").textContent = fmtBytes(state.usage_bytes);
+
+  const events = (s?.status_changes || []).slice().reverse();
+  if (s?.ended_at) events.unshift({ at: s.ended_at, status: `ended: ${s.end_status}`, layer: s.last_layer });
+  $("timeline").replaceChildren(...(events.length ? events.map((e) => {
+    const li = document.createElement("li");
+    li.innerHTML = `<span class="dot"></span><span></span><span class="t"></span>`;
+    li.children[0].classList.add(e.status.replace(/^ended: /, ""));
+    li.children[1].textContent = `${label(e.status)} · layer ${e.layer}`;
+    li.children[2].textContent = fmtTime(e.at);
+    return li;
+  }) : [Object.assign(document.createElement("li"), { className: "muted", textContent: "No events yet", style: "display:block" })]));
+
+  document.title = printing ? `${p.progress}% · ${prettyName(p.filename)} — Centauri Recorder` : "Centauri Recorder";
+}
+
+async function refresh() {
+  try {
+    state = await (await fetch("/api/status", { cache: "no-store" })).json();
+  } catch {
+    state = { printer: null, camera_ok: false, session: null, files: [], usage_bytes: 0 };
+  }
+  renderTabs(); renderViewer(); renderSide();
+}
+refresh();
+setInterval(refresh, 3000);
+</script>
+</body>
+</html>
