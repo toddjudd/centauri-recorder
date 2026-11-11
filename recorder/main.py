@@ -6,11 +6,17 @@ from aiohttp import web
 
 from .camera import Camera
 from .config import Config
+from .notify import notify_print_ended
 from .printer import Printer
 from .session import Session
 from .web import make_app
 
 log = logging.getLogger("main")
+
+async def end(cfg: Config, session: Session, status: str) -> None:
+    await session.finish(status)
+    await notify_print_ended(cfg, session)
+
 
 async def supervise(cfg: Config, camera: Camera, printer: Printer) -> None:
     session = Session.load_open(cfg, camera)
@@ -26,14 +32,17 @@ async def supervise(cfg: Config, camera: Camera, printer: Printer) -> None:
             offline_since = offline_since or time.time()
             # A long outage while a print was recording usually means the printer was powered off.
             if session and running and time.time() - offline_since > cfg.end_grace_seconds * 10:
-                await session.finish("printer_offline")
+                await end(cfg, session, "printer_offline")
                 session, running = None, False
             continue
         offline_since = None
 
         # The printer clears TaskId when a print ends, so only a *different* active job supersedes.
         if session and st.printing and st.task_id and session.task_id != st.task_id:
-            await session.finish("superseded" if running else "unknown")
+            if running:
+                await end(cfg, session, "superseded")
+            else:
+                await session.finish("unknown")
             session, running = None, False
 
         if session and not running:
@@ -58,7 +67,7 @@ async def supervise(cfg: Config, camera: Camera, printer: Printer) -> None:
         else:
             idle_since = idle_since or time.time()
             if time.time() - idle_since >= cfg.end_grace_seconds:
-                await session.finish(st.print_status_name)
+                await end(cfg, session, st.print_status_name)
                 session, running = None, False
 
 

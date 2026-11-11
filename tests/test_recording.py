@@ -92,3 +92,36 @@ def test_long_print_keeps_first_and_last_windows(tmp_path):
     assert not (current / "full.mp4").exists()
     assert 2 < duration(current / "first_layers.mp4") < 10
     assert 2 < duration(current / "final_minutes.mp4") < 15
+
+
+def test_completed_print_sends_notification_with_snapshot(tmp_path):
+    from aiohttp import web
+
+    received = []
+
+    async def run():
+        async def topic(request):
+            received.append((request.method, dict(request.query), await request.read()))
+            return web.json_response({"id": "x"})
+
+        app = web.Application()
+        app.router.add_put("/topic", topic)
+        runner = web.AppRunner(app)
+        await runner.setup()
+        site = web.TCPSite(runner, "127.0.0.1", 0)
+        await site.start()
+        port = site._server.sockets[0].getsockname()[1]
+        try:
+            await record(tmp_path, 6, ntfy_url=f"http://127.0.0.1:{port}/topic", public_url="http://nas:8080")
+            await asyncio.sleep(1)
+        finally:
+            await runner.cleanup()
+
+    asyncio.run(run())
+    assert len(received) == 1
+    method, query, body = received[0]
+    assert method == "PUT"
+    assert query["title"] == "Print complete"
+    assert query["message"].startswith("a\n")
+    assert query["click"] == "http://nas:8080"
+    assert query["filename"] == "print.jpg" and body[:2] == b"\xff\xd8"

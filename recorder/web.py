@@ -3,10 +3,12 @@ import json
 from dataclasses import asdict
 from pathlib import Path
 
+import aiohttp
 from aiohttp import web
 
 from .camera import Camera
 from .config import Config
+from .notify import send
 from .printer import Printer
 
 STATIC = Path(__file__).parent / "static"
@@ -30,7 +32,19 @@ def make_app(cfg: Config, camera: Camera, printer: Printer) -> web.Application:
             "session": session,
             "files": files,
             "usage_bytes": usage,
+            "notify_url": cfg.ntfy_url or None,
         })
+
+    async def notify_test(_: web.Request) -> web.Response:
+        if not cfg.ntfy_url:
+            raise web.HTTPNotFound()
+        params = {"title": "Centauri Recorder", "message": "Test notification. You'll get one like this when a print ends.",
+                  "tags": "bell"}
+        try:
+            await send(cfg, params, camera.latest)
+        except (aiohttp.ClientError, RuntimeError, TimeoutError) as e:
+            return web.json_response({"ok": False, "error": str(e)}, status=502)
+        return web.json_response({"ok": True})
 
     async def live(request: web.Request) -> web.StreamResponse:
         resp = web.StreamResponse(headers={"Content-Type": "multipart/x-mixed-replace; boundary=frame",
@@ -58,6 +72,7 @@ def make_app(cfg: Config, camera: Camera, printer: Printer) -> web.Application:
     app = web.Application()
     app.router.add_get("/", index)
     app.router.add_get("/api/status", status)
+    app.router.add_post("/api/notify/test", notify_test)
     app.router.add_get("/live", live)
     app.router.add_get("/files/{name}", files)
     app.router.add_static("/static", STATIC)

@@ -27,6 +27,12 @@ class Config:
     # How long the printer must report "not printing" before the session is closed.
     end_grace_seconds: int = int(_env("END_GRACE_SECONDS", "60"))
 
+    # ntfy topic URL (e.g. https://ntfy.sh/my-secret-topic) to notify when a print ends.
+    ntfy_url: str = _env("NTFY_URL", "")
+    ntfy_token: str = _env("NTFY_TOKEN", "")
+    # Address of this dashboard, used as the notification's tap target.
+    public_url: str = _env("PUBLIC_URL", "")
+
     @property
     def camera_url(self) -> str:
         return f"http://{self.printer_host}:3031/video"
