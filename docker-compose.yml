@@ -10,7 +10,7 @@ services:
       - ./data:/data
     environment:
       PRINTER_HOST: 192.168.4.33
-      TZ: America/Chicago
+      TZ: America/Denver
       # Optional tuning (defaults shown):
       # FIRST_MINUTES: 45            # keep real-time video of the start of the print
       # BUFFER_MINUTES: 60           # keep a rolling window of the last N minutes

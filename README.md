@@ -39,3 +39,12 @@ Needs Python 3.12 and an ffmpeg build with `drawtext` (libfreetype).
 pip install -r requirements.txt
 DATA_DIR=./data PRINTER_HOST=192.168.4.33 python -m recorder.main
 ```
+
+## Tests
+
+The tests drive the real encoder with a fake printer, so they need the same ffmpeg (plus ffprobe) on `PATH`. They take about 2 minutes.
+
+```sh
+pip install -r requirements.txt pytest
+python -m pytest tests
+```
