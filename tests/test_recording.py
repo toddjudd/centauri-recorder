@@ -130,6 +130,20 @@ def test_completed_print_sends_discord_dm_with_snapshot(tmp_path, monkeypatch):
     assert received[0] == ("dm", "Bot tok", {"recipient_id": "42"})
     _, payload, image = received[1]
     assert payload["content"].startswith("✅ **Print complete**: a\n")
-    assert payload["content"].endswith("https://centauri.example")
+    assert payload["content"].endswith("[Watch the recording](https://centauri.example/?view=full.mp4)")
     assert payload["attachments"] == [{"id": 0, "filename": "print.jpg"}]
     assert image[:2] == b"\xff\xd8"
+
+
+def test_watch_link_picks_video_for_outcome(tmp_path):
+    from recorder.notify import watch_url
+
+    cfg = Config(data_dir=tmp_path, public_url="https://c.example")
+    session = SimpleNamespace(dir=tmp_path, meta={"end_status": "stopped"})
+    assert watch_url(cfg) == "https://c.example/"
+    assert watch_url(cfg, session) == "https://c.example/"
+    (tmp_path / "timelapse.mp4").touch()
+    (tmp_path / "final_minutes.mp4").touch()
+    assert watch_url(cfg, session) == "https://c.example/?view=final_minutes.mp4"
+    session.meta["end_status"] = "complete"
+    assert watch_url(cfg, session) == "https://c.example/?view=timelapse.mp4"

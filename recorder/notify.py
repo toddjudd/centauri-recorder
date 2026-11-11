@@ -34,8 +34,21 @@ def build(cfg: Config, session: Session) -> str:
     lines = [f"{emoji} **{title}**: {name}",
              f"{duration} · layer {meta['last_layer']}/{meta['total_layers']}"]
     if cfg.public_url:
-        lines.append(cfg.public_url)
+        lines.append(f"[Watch the recording]({watch_url(cfg, session)})")
     return "\n".join(lines)
+
+
+def watch_url(cfg: Config, session: Session | None = None) -> str:
+    """Dashboard link that opens the most useful video for how the print ended."""
+    base = cfg.public_url.rstrip("/") + "/"
+    if session is None:
+        return base
+    if session.meta["end_status"] == "complete":
+        order = ("full.mp4", "timelapse.mp4")
+    else:  # failures: what happened right before the end matters most
+        order = ("full.mp4", "final_minutes.mp4", "timelapse.mp4")
+    video = next((v for v in order if (session.dir / v).exists()), None)
+    return f"{base}?view={video}" if video else base
 
 
 async def send(cfg: Config, content: str, image: bytes | None = None) -> None:
