@@ -33,12 +33,9 @@ Open `http://NAS:8080` for the dashboard: live camera, the recorded videos with 
 
 ## Notifications
 
-When a print ends, the recorder can send a push notification with the result, duration, layer count and a final camera frame. It uses [ntfy](https://ntfy.sh), because browsers only allow web notifications on HTTPS pages.
+When a print ends, the recorder can DM you on Discord with the result, duration, layer count and a final camera frame. It uses a Discord bot token, the same way the homelab watchdog scripts do.
 
-1. Install the ntfy app ([Android](https://play.google.com/store/apps/details?id=io.heckel.ntfy), [iOS](https://apps.apple.com/app/ntfy/id1625396347)).
-2. Set `NTFY_URL` in `docker-compose.yml` to a topic with a hard-to-guess name, for example `https://ntfy.sh/centauri-7f3k9q2x`. Anyone who knows the topic name can read it.
-3. Set `PUBLIC_URL` to the dashboard address so tapping the notification opens it.
-4. Subscribe to the same topic in the app. The dashboard's Notifications card shows the topic and has a **Send test** button.
+Set `DISCORD_BOT_TOKEN` and `DISCORD_USER_ID` (the user to DM; the bot must share a server with them). Set `PUBLIC_URL` to the dashboard address to include a link. The dashboard's Notifications card has a **Send test** button.
 
 ## Run locally
 

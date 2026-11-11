@@ -51,9 +51,6 @@
   .btn { color: var(--text); text-decoration: none; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--line);
          background: var(--panel-2); font: inherit; font-size: 12px; cursor: pointer; }
   .btn:hover { border-color: #3a404b; } .btn:disabled { opacity: .5; cursor: default; }
-  .row { display: flex; gap: 8px; flex-wrap: wrap; }
-  .topic { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; background: var(--panel-2); border-radius: 8px;
-           padding: 8px 10px; margin-bottom: 12px; word-break: break-all; }
   .small { font-size: 12px; margin-top: 10px; min-height: 1em; }
   code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: var(--text); }
   a { color: var(--accent); }
@@ -133,15 +130,10 @@
 
     <section class="card pad">
       <h2>Notifications</h2>
-      <div id="notify-off" class="muted">Set <code>NTFY_URL</code> to get a push notification on your phone when a print ends.</div>
+      <div id="notify-off" class="muted">Set <code>DISCORD_BOT_TOKEN</code> and <code>DISCORD_USER_ID</code> to get a Discord DM when a print ends.</div>
       <div id="notify-on" hidden>
-        <p class="muted" style="margin:0 0 12px">Subscribe to this topic in the <a href="https://ntfy.sh/app" target="_blank" rel="noopener">ntfy app</a> to get a push when a print ends.</p>
-        <div class="topic" id="notify-topic"></div>
-        <div class="row">
-          <a class="btn" id="notify-open" target="_blank" rel="noopener">Open topic</a>
-          <button class="btn" id="notify-copy" type="button">Copy</button>
-          <button class="btn" id="notify-test" type="button">Send test</button>
-        </div>
+        <p class="muted" style="margin:0 0 12px">You'll get a Discord DM with the result and a final camera frame when a print ends.</p>
+        <button class="btn" id="notify-test" type="button">Send test</button>
         <div class="muted small" id="notify-msg"></div>
       </div>
     </section>
@@ -260,9 +252,7 @@ function renderSide() {
     return li;
   }) : [Object.assign(document.createElement("li"), { className: "muted", textContent: "No events yet", style: "display:block" })]));
 
-  const topic = state.notify_url;
-  $("notify-on").hidden = !topic; $("notify-off").hidden = !!topic;
-  if (topic && $("notify-topic").textContent !== topic) { $("notify-topic").textContent = topic; $("notify-open").href = topic; }
+  $("notify-on").hidden = !state.notifications; $("notify-off").hidden = state.notifications;
 
   document.title = printing ? `${p.progress}% · ${prettyName(p.filename)} — Centauri Recorder` : "Centauri Recorder";
 }
@@ -275,18 +265,11 @@ async function refresh() {
   }
   renderTabs(); renderViewer(); renderSide();
 }
-$("notify-copy").onclick = async () => {
-  // navigator.clipboard only exists on HTTPS pages; the LAN dashboard is plain HTTP.
-  const ta = Object.assign(document.createElement("textarea"), { value: state.notify_url, readOnly: true });
-  document.body.append(ta); ta.select();
-  const ok = document.execCommand("copy"); ta.remove();
-  $("notify-msg").textContent = ok ? "Copied." : "Copy failed; long-press the topic to copy it.";
-};
 $("notify-test").onclick = async (e) => {
   e.target.disabled = true; $("notify-msg").textContent = "Sending…";
   try {
     const r = await (await fetch("/api/notify/test", { method: "POST" })).json();
-    $("notify-msg").textContent = r.ok ? "Sent. Check your phone." : `Failed: ${r.error}`;
+    $("notify-msg").textContent = r.ok ? "Sent. Check Discord." : `Failed: ${r.error}`;
   } catch { $("notify-msg").textContent = "Failed to reach the recorder."; }
   e.target.disabled = false;
 };

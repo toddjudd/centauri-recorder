@@ -94,34 +94,42 @@ def test_long_print_keeps_first_and_last_windows(tmp_path):
     assert 2 < duration(current / "final_minutes.mp4") < 15
 
 
-def test_completed_print_sends_notification_with_snapshot(tmp_path):
+def test_completed_print_sends_discord_dm_with_snapshot(tmp_path, monkeypatch):
     from aiohttp import web
+
+    from recorder import notify
 
     received = []
 
     async def run():
-        async def topic(request):
-            received.append((request.method, dict(request.query), await request.read()))
-            return web.json_response({"id": "x"})
+        async def open_dm(request):
+            received.append(("dm", request.headers["Authorization"], await request.json()))
+            return web.json_response({"id": "chan1"})
+
+        async def message(request):
+            form = await request.post()
+            received.append(("msg", json.loads(form["payload_json"]), form["files[0]"].file.read()))
+            return web.json_response({"id": "m1"})
 
         app = web.Application()
-        app.router.add_put("/topic", topic)
+        app.router.add_post("/users/@me/channels", open_dm)
+        app.router.add_post("/channels/chan1/messages", message)
         runner = web.AppRunner(app)
         await runner.setup()
         site = web.TCPSite(runner, "127.0.0.1", 0)
         await site.start()
-        port = site._server.sockets[0].getsockname()[1]
+        monkeypatch.setattr(notify, "API", f"http://127.0.0.1:{site._server.sockets[0].getsockname()[1]}")
         try:
-            await record(tmp_path, 6, ntfy_url=f"http://127.0.0.1:{port}/topic", public_url="http://nas:8080")
+            await record(tmp_path, 6, discord_bot_token="tok", discord_user_id="42",
+                         public_url="https://centauri.example")
             await asyncio.sleep(1)
         finally:
             await runner.cleanup()
 
     asyncio.run(run())
-    assert len(received) == 1
-    method, query, body = received[0]
-    assert method == "PUT"
-    assert query["title"] == "Print complete"
-    assert query["message"].startswith("a\n")
-    assert query["click"] == "http://nas:8080"
-    assert query["filename"] == "print.jpg" and body[:2] == b"\xff\xd8"
+    assert received[0] == ("dm", "Bot tok", {"recipient_id": "42"})
+    _, payload, image = received[1]
+    assert payload["content"].startswith("✅ **Print complete**: a\n")
+    assert payload["content"].endswith("https://centauri.example")
+    assert payload["attachments"] == [{"id": 0, "filename": "print.jpg"}]
+    assert image[:2] == b"\xff\xd8"
