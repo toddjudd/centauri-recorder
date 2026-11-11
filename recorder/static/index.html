@@ -276,8 +276,11 @@ async function refresh() {
   renderTabs(); renderViewer(); renderSide();
 }
 $("notify-copy").onclick = async () => {
-  try { await navigator.clipboard.writeText(state.notify_url); $("notify-msg").textContent = "Copied."; }
-  catch { $("notify-msg").textContent = "Copy failed; long-press the topic to copy it."; }
+  // navigator.clipboard only exists on HTTPS pages; the LAN dashboard is plain HTTP.
+  const ta = Object.assign(document.createElement("textarea"), { value: state.notify_url, readOnly: true });
+  document.body.append(ta); ta.select();
+  const ok = document.execCommand("copy"); ta.remove();
+  $("notify-msg").textContent = ok ? "Copied." : "Copy failed; long-press the topic to copy it.";
 };
 $("notify-test").onclick = async (e) => {
   e.target.disabled = true; $("notify-msg").textContent = "Sending…";
