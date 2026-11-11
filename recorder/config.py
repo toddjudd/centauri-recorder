@@ -27,11 +27,15 @@ class Config:
     # How long the printer must report "not printing" before the session is closed.
     end_grace_seconds: int = int(_env("END_GRACE_SECONDS", "60"))
 
-    # ntfy topic URL (e.g. https://ntfy.sh/my-secret-topic) to notify when a print ends.
-    ntfy_url: str = _env("NTFY_URL", "")
-    ntfy_token: str = _env("NTFY_TOKEN", "")
-    # Address of this dashboard, used as the notification's tap target.
+    # Discord bot that DMs DISCORD_USER_ID when a print ends.
+    discord_bot_token: str = _env("DISCORD_BOT_TOKEN", "")
+    discord_user_id: str = _env("DISCORD_USER_ID", "")
+    # Address of this dashboard, linked in the notification.
     public_url: str = _env("PUBLIC_URL", "")
+
+    @property
+    def notifications_enabled(self) -> bool:
+        return bool(self.discord_bot_token and self.discord_user_id)
 
     @property
     def camera_url(self) -> str:

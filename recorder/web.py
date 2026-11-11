@@ -32,16 +32,14 @@ def make_app(cfg: Config, camera: Camera, printer: Printer) -> web.Application:
             "session": session,
             "files": files,
             "usage_bytes": usage,
-            "notify_url": cfg.ntfy_url or None,
+            "notifications": cfg.notifications_enabled,
         })
 
     async def notify_test(_: web.Request) -> web.Response:
-        if not cfg.ntfy_url:
+        if not cfg.notifications_enabled:
             raise web.HTTPNotFound()
-        params = {"title": "Centauri Recorder", "message": "Test notification. You'll get one like this when a print ends.",
-                  "tags": "bell"}
         try:
-            await send(cfg, params, camera.latest)
+            await send(cfg, "🔔 **Centauri Recorder** test. You'll get a DM like this when a print ends.", camera.latest)
         except (aiohttp.ClientError, RuntimeError, TimeoutError) as e:
             return web.json_response({"ok": False, "error": str(e)}, status=502)
         return web.json_response({"ok": True})

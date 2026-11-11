@@ -11,11 +11,10 @@ services:
     environment:
       PRINTER_HOST: 192.168.4.33
       TZ: America/Denver
-      # Push notification when a print ends. Pick a hard-to-guess topic name; anyone who
-      # knows it can read the notifications. Then subscribe to it in the ntfy app.
-      # NTFY_URL: https://ntfy.sh/centauri-change-me
-      # NTFY_TOKEN: ""               # only for a protected self-hosted ntfy server
-      # PUBLIC_URL: http://nas:8080  # opened when you tap the notification
+      # Discord DM when a print ends (bot must share a server with the user).
+      # DISCORD_BOT_TOKEN: ""
+      # DISCORD_USER_ID: ""
+      # PUBLIC_URL: http://nas:8080  # dashboard link in the notification
       # Optional tuning (defaults shown):
       # FIRST_MINUTES: 45            # keep real-time video of the start of the print
       # BUFFER_MINUTES: 60           # keep a rolling window of the last N minutes
