@@ -15,7 +15,7 @@ from recorder.printer import PrinterState
 
 FRAME = (Path(__file__).parent / "frame.jpg").read_bytes()
 PRINTING = PrinterState(printing=True, print_status=13, task_id="task-a", filename="a.gcode",
-                        layer=1, total_layers=10, progress=0, nozzle=250, bed=70)
+                        layer=1, total_layers=10, progress=0, nozzle=250, bed=70, light=False)
 # What the Centauri Carbon reports right after a print completes: TaskId and Filename are cleared.
 COMPLETE = replace(PRINTING, printing=False, print_status=9, task_id="", filename="", layer=10)
 
@@ -37,9 +37,18 @@ def kill_segment_encoder() -> None:
             os.kill(int(proc.name), signal.SIGKILL)
 
 
+light_calls: list[bool] = []
+
+
 async def record(tmp_path: Path, seconds: float, restart_at: float | None = None, **cfg) -> Path:
     config = Config(data_dir=tmp_path, segment_seconds=4, end_grace_seconds=2, timelapse_interval=1, **cfg)
-    camera, printer = Camera(""), SimpleNamespace(state=PRINTING)
+    camera = Camera("")
+    light_calls.clear()
+
+    async def set_light(on: bool) -> None:
+        light_calls.append(on)
+
+    printer = SimpleNamespace(state=PRINTING, set_light=set_light)
 
     async def feed():
         while True:
@@ -71,6 +80,7 @@ async def record(tmp_path: Path, seconds: float, restart_at: float | None = None
 
 def test_completed_print_keeps_whole_recording(tmp_path):
     current = asyncio.run(record(tmp_path, 20))
+    assert light_calls == [True]  # light was off when the print started
     meta = json.loads((current / "session.json").read_text())
     assert meta["end_status"] == "complete"
     assert not (current / "segments").exists() and not (current / "frames").exists()
@@ -147,3 +157,12 @@ def test_watch_link_picks_video_for_outcome(tmp_path):
     assert watch_url(cfg, session) == "https://c.example/?view=final_minutes.mp4"
     session.meta["end_status"] = "complete"
     assert watch_url(cfg, session) == "https://c.example/?view=timelapse.mp4"
+
+
+def test_light_left_alone_when_already_on_or_disabled(tmp_path, monkeypatch):
+    monkeypatch.setitem(globals(), "PRINTING", replace(PRINTING, light=True))
+    asyncio.run(record(tmp_path / "on", 4))
+    assert light_calls == []
+    monkeypatch.setitem(globals(), "PRINTING", replace(PRINTING, light=False))
+    asyncio.run(record(tmp_path / "off", 4, light_on_print=False))
+    assert light_calls == []
