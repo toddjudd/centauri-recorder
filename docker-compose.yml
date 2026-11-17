@@ -24,3 +24,4 @@ services:
       # TIMELAPSE_FPS: 30
       # TIMELAPSE_REBUILD_MINUTES: 60
       # END_GRACE_SECONDS: 60
+      # LIGHT_ON_PRINT: true         # turn the chamber light on when a print starts

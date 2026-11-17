@@ -58,6 +58,12 @@ async def supervise(cfg: Config, camera: Camera, printer: Printer) -> None:
             if st.printing and st.task_id:
                 session = Session.create(cfg, camera, st)
                 session.start(st)
+                if cfg.light_on_print and not st.light:
+                    try:
+                        await printer.set_light(True)
+                        log.info("turned the chamber light on")
+                    except Exception:
+                        log.exception("could not turn the chamber light on")
                 running, idle_since = True, None
             continue
 

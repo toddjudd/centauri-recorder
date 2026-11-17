@@ -24,6 +24,9 @@ class Config:
     timelapse_fps: int = int(_env("TIMELAPSE_FPS", "30"))
     timelapse_rebuild_minutes: int = int(_env("TIMELAPSE_REBUILD_MINUTES", "60"))
 
+    # Turn the chamber light on when a print starts so the recording isn't dark.
+    light_on_print: bool = _env("LIGHT_ON_PRINT", "true").lower() in ("1", "true", "yes")
+
     # How long the printer must report "not printing" before the session is closed.
     end_grace_seconds: int = int(_env("END_GRACE_SECONDS", "60"))
 

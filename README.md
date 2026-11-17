@@ -22,6 +22,7 @@ Storage stays small regardless of print length: about 150 MB of real-time video 
 - Opens one connection to the camera (`http://PRINTER:3031/video`, 640x360 MJPEG at ~10 fps) and fans frames out to the encoder, the timelapse and the web UI's live view.
 - Real-time video is encoded in 5-minute segments. Segments outside the first and last windows are deleted as the print runs, then the kept segments are joined at the end.
 - If the container restarts mid-print, it resumes the same session.
+- When a print starts with the chamber light off, it turns the light on so the recording isn't dark (`LIGHT_ON_PRINT=false` to disable). It doesn't turn it off afterwards.
 
 ## Run on the NAS
 
